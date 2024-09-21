@@ -5,7 +5,6 @@
 
 #include <spdlog/common.h>
 #include <spdlog/details/file_helper.h>
-#include <spdlog/details/file_helper_chacha20.h>
 #include <spdlog/details/null_mutex.h>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/fmt/chrono.h>
@@ -208,7 +207,6 @@ private:
 
 using daily_file_sink_mt = daily_file_sink<std::mutex>;
 using daily_file_sink_st = daily_file_sink<details::null_mutex>;
-using daily_file_chacha20_sink_mt = daily_file_sink<std::mutex,details::file_helper_chacha20, daily_filename_format_calculator>;
 using daily_file_format_sink_mt = daily_file_sink<std::mutex, details::file_helper, daily_filename_format_calculator>;
 using daily_file_format_sink_st = daily_file_sink<details::null_mutex, details::file_helper,daily_filename_format_calculator>;
 

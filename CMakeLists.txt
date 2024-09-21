@@ -23,10 +23,10 @@ add_executable(enchat main.cpp
 )
 #add_subdirectory(curve25519)
 
-#find_package(Botan REQUIRED)
+find_package(Qt6 CONFIG REQUIRED COMPONENTS Core)
 find_package(MbedTLS REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-target_link_libraries(enchat PUBLIC MbedTLS::mbedcrypto OpenSSL::Crypto xlog)
+target_link_libraries(enchat PUBLIC Qt6::Core MbedTLS::mbedcrypto OpenSSL::Crypto xlog)
 target_include_directories(enchat PRIVATE asio xlog)
 #target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE /utf-8 /TP)
