@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(enchat VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
+#QTDIR=X:/Qt/6.7.2/msvc2019_64
+list(APPEND CMAKE_PREFIX_PATH $ENV{QTDIR})
 
 add_subdirectory(xlog)
 
