@@ -26,7 +26,17 @@ add_executable(enchat main.cpp
 find_package(Qt6 CONFIG REQUIRED COMPONENTS Core)
 find_package(MbedTLS REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(CLI11 CONFIG REQUIRED)
+find_package(asio CONFIG REQUIRED)
 
-target_link_libraries(enchat PUBLIC Qt6::Core MbedTLS::mbedcrypto OpenSSL::Crypto xlog)
-target_include_directories(enchat PRIVATE asio xlog)
+target_link_libraries(enchat PUBLIC
+    Qt6::Core
+    MbedTLS::mbedcrypto
+    OpenSSL::Crypto
+    nlohmann_json::nlohmann_json
+    CLI11::CLI11
+    asio::asio
+    xlog)
+target_include_directories(enchat PRIVATE xlog)
 #target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE /utf-8 /TP)
