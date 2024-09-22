@@ -1,51 +1,37 @@
-// Copyright(c) 2015-present, Gabi Melman & spdlog contributors.
-// Distributed under the MIT License (http://opensource.org/licenses/MIT)
-
-#pragma once
-
-#ifndef SPDLOG_HEADER_ONLY
-#    include <spdlog/details/file_helper_chacha20.h>
-#endif
-
-#include <spdlog/details/os.h>
-#include <spdlog/common.h>
-
-#include <cerrno>
-#include <chrono>
-#include <cstdio>
-#include <string>
-#include <thread>
-#include <tuple>
+#include "filehelper_chacha.h"
 
 namespace spdlog {
 namespace details {
-
 static uint32_t CRYPTO_BUFFER_SIZE = 4096;
 
 
-SPDLOG_INLINE file_helper_chacha20::file_helper_chacha20(const file_event_handlers &event_headles, const uint8_t *key, const uint8_t *nonce)
+FileHelperChacha::FileHelperChacha(uint8_t *chacha_key, uint8_t *chacha_nonce, const file_event_handlers &event_headles)
     : event_handlers_(event_headles),
     crypto_buffer_(new uint8_t[CRYPTO_BUFFER_SIZE])
 {
-    if (key != nullptr && nonce != nullptr) {
-        memcpy(key_,key,32);
-        memcpy(nonce_,nonce,12);
+    if (chacha_key == nullptr || chacha_nonce == nullptr) {
+        throw_spdlog_ex("chacha key or nonce is null.");
+        std::memset(key_, 0, 32);
+        std::memset(nonce_, 0, 12);
     } else {
-        throw_spdlog_ex("wrong key to file " + os::filename_to_str(filename_));
+        std::memcpy(key_, chacha_key, 32);
+        std::memcpy(nonce_, chacha_nonce, 12);
     }
+
 }
 
-SPDLOG_INLINE file_helper_chacha20::~file_helper_chacha20()
+FileHelperChacha::~FileHelperChacha()
 {
     close();
 }
-void file_helper_chacha20::init_chacha20()
+void FileHelperChacha::init_chacha20()
 {
     //前四个字节全为0分隔每次加密的数据,后四个字节表示每次总计加密的数据大小
     unsigned char data[8] = {0,0,0,0,0xFF,0xFF,0xFF,0xFF};
     if (std::fwrite(data, 1, 8, fd_) != 8) {
         throw_spdlog_ex("Failed writing to file " + os::filename_to_str(filename_));
     }
+    /*不记录加密大小
     total_write_ = 0;
     std::fpos_t pos;
     if (std::fgetpos(fd_, &pos) != 0) {
@@ -56,6 +42,7 @@ void file_helper_chacha20::init_chacha20()
 #else
     size_pos_ = pos - 4;
 #endif
+*/
     if (!chacha20_ctx_) {
         chacha20_ctx_ = new mbedtls_chacha20_context;
     } else {
@@ -66,7 +53,7 @@ void file_helper_chacha20::init_chacha20()
     mbedtls_chacha20_setkey(chacha20_ctx_,key_);
     mbedtls_chacha20_starts(chacha20_ctx_,nonce_,0);
 }
-SPDLOG_INLINE void file_helper_chacha20::open(const filename_t &fname, bool truncate)
+void FileHelperChacha::open(const filename_t &fname, bool truncate)
 {
     close();
     filename_ = fname;
@@ -112,7 +99,7 @@ SPDLOG_INLINE void file_helper_chacha20::open(const filename_t &fname, bool trun
     throw_spdlog_ex("Failed opening file " + os::filename_to_str(filename_) + " for writing", errno);
 }
 
-SPDLOG_INLINE void file_helper_chacha20::reopen(bool truncate)
+void FileHelperChacha::reopen(bool truncate)
 {
     if (filename_.empty())
     {
@@ -121,12 +108,12 @@ SPDLOG_INLINE void file_helper_chacha20::reopen(bool truncate)
     this->open(filename_, truncate);
 }
 
-SPDLOG_INLINE void file_helper_chacha20::flush()
+void FileHelperChacha::flush()
 {
     std::fflush(fd_);
 }
 
-SPDLOG_INLINE void file_helper_chacha20::close()
+void FileHelperChacha::close()
 {
     if (chacha20_ctx_ != nullptr) {
         delete chacha20_ctx_;
@@ -149,7 +136,7 @@ SPDLOG_INLINE void file_helper_chacha20::close()
     }
 }
 
-SPDLOG_INLINE void file_helper_chacha20::write(const memory_buf_t &buf)
+void FileHelperChacha::write(const memory_buf_t &buf)
 {
     size_t msg_size = buf.size();
     auto data = buf.data();
@@ -161,10 +148,10 @@ SPDLOG_INLINE void file_helper_chacha20::write(const memory_buf_t &buf)
     {
         throw_spdlog_ex("Failed writing to file " + os::filename_to_str(filename_), errno);
     }
-    total_write_ += msg_size;
+    //total_write_ += msg_size;
 }
 
-SPDLOG_INLINE size_t file_helper_chacha20::size() const
+size_t FileHelperChacha::size() const
 {
     if (fd_ == nullptr)
     {
@@ -173,25 +160,12 @@ SPDLOG_INLINE size_t file_helper_chacha20::size() const
     return os::filesize(fd_);
 }
 
-SPDLOG_INLINE const filename_t &file_helper_chacha20::filename() const
+const filename_t &FileHelperChacha::filename() const
 {
     return filename_;
 }
 
-//
-// return file path and its extension:
-//
-// "mylog.txt" => ("mylog", ".txt")
-// "mylog" => ("mylog", "")
-// "mylog." => ("mylog.", "")
-// "/dir1/dir2/mylog.txt" => ("/dir1/dir2/mylog", ".txt")
-//
-// the starting dot in filenames is ignored (hidden files):
-//
-// ".mylog" => (".mylog". "")
-// "my_folder/.mylog" => ("my_folder/.mylog", "")
-// "my_folder/.mylog.txt" => ("my_folder/.mylog", ".txt")
-SPDLOG_INLINE std::tuple<filename_t, filename_t> file_helper_chacha20::split_by_extension(const filename_t &fname)
+std::tuple<filename_t, filename_t> FileHelperChacha::split_by_extension(const filename_t &fname)
 {
     auto ext_index = fname.rfind('.');
 
@@ -212,6 +186,5 @@ SPDLOG_INLINE std::tuple<filename_t, filename_t> file_helper_chacha20::split_by_
     // finally - return a valid base and extension tuple
     return std::make_tuple(fname.substr(0, ext_index), fname.substr(ext_index));
 }
-
-} // namespace details
-} // namespace spdlog
+}
+}
