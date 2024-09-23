@@ -45,7 +45,7 @@ public:
 
         server_port = obj_root.value("server_port").toInt(17799);
     }
-    void parse2(const std::string& file)
+    static void parse2(const std::string& file)
     {
         std::ifstream cfg_file(file);
         json root = json::parse(cfg_file,nullptr,false);

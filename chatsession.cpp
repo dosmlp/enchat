@@ -40,7 +40,7 @@ void ChatSession::sendHandshake(uint8_t t)
     std::shared_ptr<HelloPacket> hp(new HelloPacket);
 
     hp->type = t;
-    if (!name_.empty()) {
+    if (!name_.isEmpty()) {
         std::memcpy(hp->name,name_.data(),name_.size());
     }
 
@@ -50,6 +50,7 @@ void ChatSession::sendHandshake(uint8_t t)
     ED25519_sign(hp->sig,(const uint8_t*)hp.get(),sizeof(HelloPacket)-64,AppConfig::private_key);
 
     auto self = shared_from_this();
+    SDEBUG("send handshake type:{}",hp->type);
     asio::async_write(socket_,asio::buffer(hp.get(),sizeof(HelloPacket)),asio::transfer_exactly(sizeof(HelloPacket)),
         [self,hp](std::error_code ec,size_t size) {
             if (ec) {
@@ -58,7 +59,7 @@ void ChatSession::sendHandshake(uint8_t t)
             }
             if (hp->type == 1) {
                 //发送请求包时等待接收响应包
-                SDEBUG("waiting for handshake...");
+                SDEBUG("waiting for hello...");
                 self->receiveHandshake();
             }
         }
@@ -86,6 +87,7 @@ void ChatSession::receiveHandshake()
             //TODO 使用kdf生成公共密钥
             if (X25519(chacha20_key_.get(),ephemeral_pri_key_.get(),hp->ephemeral_key)) {
                 initChaCha20();
+                SINFO("handshake success.");
             } else {
                 SERROR("gen shared key fail.");
                 return;
@@ -106,16 +108,15 @@ void ChatSession::receiveHandshake()
 void ChatSession::writeMsg(std::unique_ptr<uint8_t> msg, uint16_t size)
 {
     //TODO 使用mbedtls_chachapoly_update
-    mbedtls_chacha20_update(chacha_ectx_.get(),size,msg.get(),msg.get());
+    mbedtls_chacha20_update(chacha_ectx_.get(),size,msg.get()+4,msg.get()+4);
 
-    std::shared_ptr<uint8_t> data(new uint8_t[size+MSG_HEAD_LEN]);
+    std::shared_ptr<uint8_t> data(msg.release());
     std::memcpy(data.get(),&size,MSG_HEAD_LEN);
-    std::memcpy(data.get()+MSG_HEAD_LEN,msg.get(),size);
 
     auto self = shared_from_this();
     asio::async_write(socket_,
-                      asio::buffer(data.get(),size+MSG_HEAD_LEN),
-                      asio::transfer_exactly(size+MSG_HEAD_LEN),
+                      asio::buffer(data.get(),size+4),
+                      asio::transfer_exactly(size+4),
                       [self,this,data](std::error_code ec, size_t ){
                           if (ec) {
                               SERROR("write msg fail:{}",ec.message());
@@ -130,41 +131,46 @@ void ChatSession::setId(uint64_t id)
     id_ = id;
 }
 
-void ChatSession::setName(const std::string &name)
+void ChatSession::setName(const QString &name)
 {
-    name_ = name;
+    name_ = name.toUtf8();
 }
 
 void ChatSession::startRead()
 {
+    std::shared_ptr<uint8_t> msg(new uint8_t[4096]);
+    std::memset(msg.get(), 0, 4096);
     asio::async_read(socket_,
-                     asio::buffer(&msg_size_,sizeof(uint16_t)),
+                     asio::buffer(msg.get(),sizeof(uint16_t)),
                      asio::transfer_exactly(2),
-                     std::bind(&ChatSession::handleReadMsgHead,this,_1,_2,shared_from_this()));
+                     std::bind(&ChatSession::handleReadMsgHead,this,_1,_2,msg,shared_from_this()));
 }
 
-void ChatSession::handleReadMsgHead(std::error_code ec, size_t size, Ptr self)
+void ChatSession::handleReadMsgHead(std::error_code ec, size_t size, std::shared_ptr<uint8_t> msg, Ptr self)
 {
     if (ec) {
         SERROR("ReadMsgHead error:{}",ec.message());
         return;
     }
     std::memset(msg_data_.get(), 0, std::numeric_limits<uint16_t>::max());
+    uint16_t msgsize = *((uint16_t*)msg.get());
     asio::async_read(socket_,
-                     asio::buffer(msg_data_.get(),std::numeric_limits<uint16_t>::max()),
-                     asio::transfer_exactly(msg_size_),
-                     std::bind(&ChatSession::handleReadMsg,this,_1,_2,shared_from_this()));
+                     asio::buffer(msg.get()+2,msgsize+2),
+                     asio::transfer_exactly(msgsize+2),
+                     std::bind(&ChatSession::handleReadMsg,this,_1,_2,msg,shared_from_this()));
 }
 
-void ChatSession::handleReadMsg(std::error_code ec, size_t size, Ptr self)
+void ChatSession::handleReadMsg(std::error_code ec, size_t size, std::shared_ptr<uint8_t> msg, Ptr self)
 {
     if (ec) {
         SERROR("ReadMsg error:{}",ec.message());
         return;
     }
+    uint16_t msgsize = *((uint16_t*)msg.get());
+    uint16_t protocol = *((uint16_t*)msg.get()+2);
 
-    mbedtls_chacha20_update(chacha_dctx_.get(),msg_size_,msg_data_.get(),msg_data_.get());
-    std::cout << "receive:" << msg_data_.get() << "\n";
+    mbedtls_chacha20_update(chacha_dctx_.get(), msgsize, msg.get()+4, msg.get()+4);
+    std::cout << "receive:" << msg.get()+4 << "\n";
     startRead();
 }
 

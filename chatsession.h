@@ -3,11 +3,13 @@
 #include <memory>
 #include <string>
 #include <iostream>
+#include <QString>
+#include <QByteArray>
 extern "C" {
-#include <openssl/curve25519.h>
 #include <mbedtls/chacha20.h>
 #include <mbedtls/chachapoly.h>
 }
+#include <openssl/curve25519.h>
 
 
 using namespace asio::ip;
@@ -52,16 +54,16 @@ public:
 
     void writeMsg(std::unique_ptr<uint8_t> msg, uint16_t size);
     void setId(uint64_t id);
-    void setName(const std::string& name);
+    void setName(const QString& name);
 private:
     void startRead();
-    void handleReadMsgHead(std::error_code ec, size_t size, ChatSession::Ptr self);
-    void handleReadMsg(std::error_code ec, size_t size, ChatSession::Ptr self);
+    void handleReadMsgHead(std::error_code ec, size_t size, std::shared_ptr<uint8_t> msg, ChatSession::Ptr self);
+    void handleReadMsg(std::error_code ec, size_t size, std::shared_ptr<uint8_t> msg, ChatSession::Ptr self);
     void initChaCha20();
     tcp::socket socket_;
 
     uint64_t id_;
-    std::string name_;
+    QByteArray name_;
 
     uint8UPtr chacha20_key_;
     std::unique_ptr<mbedtls_chacha20_context> chacha_dctx_;

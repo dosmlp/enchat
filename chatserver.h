@@ -17,9 +17,9 @@ using io_context_work = asio::executor_work_guard<asio::io_context::executor_typ
 class ChatServer
 {
 public:
-    ChatServer(const tcp::endpoint& endpoint, int size = std::thread::hardware_concurrency()):
+    ChatServer(uint16_t port, int size = std::thread::hardware_concurrency()):
         acceptor_io_ctx_(1),
-        acceptor_(acceptor_io_ctx_, endpoint),
+        acceptor_(acceptor_io_ctx_, tcp::endpoint(make_address("::"),port)),
         works_(size),
         client_io_ctxs_(size)
     {

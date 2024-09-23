@@ -27,7 +27,7 @@ namespace sinks {
 /*
  * Generator of daily log file names in format basename.YYYY-MM-DD.ext
  */
-struct daily_filename_calculator {
+struct daily_filename_calculator2 {
     // Create filename for the form basename.YYYY-MM-DD
     static filename_t calc_filename(const filename_t &filename, const tm &now_tm) {
         filename_t basename, ext;
@@ -47,7 +47,7 @@ struct daily_filename_calculator {
  * hour,  minute)"
  *
  */
-struct daily_filename_format_calculator {
+struct daily_filename_format_calculator2 {
     static filename_t calc_filename(const filename_t &file_path, const tm &now_tm) {
 #if defined(_WIN32) && defined(SPDLOG_WCHAR_FILENAMES)
         std::wstringstream stream;
@@ -64,7 +64,7 @@ struct daily_filename_format_calculator {
  * If truncate != false , the created file will be truncated.
  * If max_files > 0, retain only the last max_files and delete previous.
  */
-template <typename Mutex, typename FileNameCalc = daily_filename_calculator>
+template <typename Mutex, typename FileNameCalc = daily_filename_calculator2>
 class daily_filechacha_sink final : public base_sink<Mutex> {
 public:
     // create daily file sink which rotates on given time
@@ -193,9 +193,9 @@ private:
 
 using daily_filechacha_sink_mt = daily_filechacha_sink<std::mutex>;
 using daily_filechacha_sink_st = daily_filechacha_sink<details::null_mutex>;
-using daily_filechacha_format_sink_mt = daily_filechacha_sink<std::mutex, daily_filename_format_calculator>;
+using daily_filechacha_format_sink_mt = daily_filechacha_sink<std::mutex, daily_filename_format_calculator2>;
 using daily_filechacha_format_sink_st =
-    daily_filechacha_sink<details::null_mutex, daily_filename_format_calculator>;
+    daily_filechacha_sink<details::null_mutex, daily_filename_format_calculator2>;
 
 }  // namespace sinks
 

@@ -2,6 +2,7 @@
 #include <numeric>
 #include <QFile>
 #include "daily_filechacha_sink.h"
+#include <spdlog/sinks/daily_file_sink.h>
 #include <spdlog/async.h>
 
 #ifdef _WIN32
@@ -16,7 +17,7 @@
 std::mutex XLogMgr::mutex_self_;
 XLogMgr* XLogMgr::self_ = nullptr;
 
-#define CRYPT_LOG//开启加密日志
+// #define CRYPT_LOG//开启加密日志
 #define ENABLE_DEBUGOUT//开启控制台输出
 #define MAXLINSIZE (1024 * 2)
 const int MAX_FILES = 30;
@@ -242,7 +243,7 @@ void XLogMgr::QtMsgOutput(QtMsgType type, const QMessageLogContext &context, con
 void XLogMgr::InitLog(const std::string& path, const std::string& filename_pre, const std::string& logger_name)
 {
     const std::string strSpdName = logger_name.empty() ? "untitled" : logger_name;
-    spdlog::level::level_enum level = spdlog::level::info;
+    spdlog::level::level_enum level = spdlog::level::trace;
 
     std::string log_path = path + "/" + filename_pre + ".log";
 
@@ -262,9 +263,9 @@ void XLogMgr::InitLog(const std::string& path, const std::string& filename_pre, 
                                                                                             false,MAX_FILES);
 #endif
 #else
-        auto daily_file_sink = std::make_shared<spdlog::sinks::daily_filechacha_sink_mt>(log_path,
+        auto daily_file_sink = std::make_shared<spdlog::sinks::daily_file_sink_mt>(log_path,
                                                                                    0,0,
-                                                                                   false,MAX_FILES);
+                                                                                false,MAX_FILES);
 #endif
         std::vector<spdlog::sink_ptr> sinks;
         sinks.emplace_back(daily_file_sink);

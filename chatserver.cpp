@@ -11,9 +11,9 @@ ChatServer::~ChatServer()
     for (auto& work : works_) {
         work.reset();
     }
-    // for (auto& io : client_io_ctxs_) {
-    //     io.stop();
-    // }
+    for (auto& io : client_io_ctxs_) {
+        io.stop();
+    }
     for (auto& thread : threads_ioctxs_) {
         thread.join();
     }
@@ -29,7 +29,7 @@ void ChatServer::doAccept()
                                    std::make_shared<ChatSession>(std::move(socket))->receiveHandshake();
                                    doAccept();
                                } else {
-                                   SERROR("async_accept errorss{}",0);
+                                   SERROR("async_accept error:{}",ec.message());
                                }
 
                            }
