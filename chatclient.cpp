@@ -15,19 +15,17 @@ ChatClient::~ChatClient()
     thread_run_.join();
 }
 
-void ChatClient::setServer(const std::string &addr, uint16_t port)
+void ChatClient::doConnect(const std::string &addr, uint16_t port)
 {
-    endpoint_srv_ = tcp::endpoint(make_address(addr),port);
-}
-
-void ChatClient::doConnect()
-{
-    connect(endpoint_srv_);
+    connect(tcp::endpoint(make_address(addr),port));
 }
 
 void ChatClient::close()
 {
-    session_.reset();
+    for (auto ptr : sess_map_) {
+        ptr.second->close();
+    }
+    sess_map_.clear();
 }
 
 void ChatClient::setName(const QString &name)
@@ -35,12 +33,15 @@ void ChatClient::setName(const QString &name)
     name_ = name;
 }
 
-void ChatClient::sendTextMsg(const QString &text)
+void ChatClient::sendTextMsg(uint64_t id, const QString &text)
 {
-    if (!session_) {
-        SINFO("chatsession is null.");
+    auto it = sess_map_.find(id);
+    if (it == sess_map_.end()) {
+        SERROR("find chatsession fail,id:{}",id);
         return;
     }
+    ChatSession<ChatClient>::Ptr session = (*it).second;
+
     QByteArray u8text = text.toUtf8();
 
     std::unique_ptr<uint8_t> msg = std::unique_ptr<uint8_t>(new uint8_t[4096]);
@@ -48,20 +49,39 @@ void ChatClient::sendTextMsg(const QString &text)
     std::memcpy(msg.get()+4,u8text.data(),u8text.size());
     *((uint16_t*)(msg.get()+2)) = 1;
 
-    session_->writeMsg(std::move(msg),u8text.size());
+    session->writeMsg(std::move(msg),static_cast<uint16_t>(u8text.size()));
+}
+
+void ChatClient::onConnected(const uint64_t id)
+{
+
+}
+
+void ChatClient::onHandShakeFinished(const uint64_t id)
+{
+
+}
+
+void ChatClient::onTextMsg(const uint64_t id, const QString &text)
+{
+
 }
 
 void ChatClient::connect(const tcp::endpoint& ep)
 {
     tcp::socket socket(io_ctx_);
-    session_ = std::make_shared<ChatSession>(std::move(socket));
-    session_->setName(name_);
+    ChatSession<ChatClient>::Ptr session = std::make_shared<ChatSession<ChatClient>>(std::move(socket),this);
+    session->setName(name_);
 
-    session_->getSocket().async_connect(ep,[this](std::error_code ec) {
+    sess_map_.insert({session->id(),session});
+
+    session->getSocket().async_connect(ep,[this,session](std::error_code ec) {
         if (!ec) {
-            session_->sendHandshake(1);
+            session->sendHandshake(1);
+            onConnected(session->id());
         } else {
-            SERROR("connect to {}:{} error,{}",endpoint_srv_.address().to_string(),endpoint_srv_.port(),ec.message());
+            auto ep = session->getSocket().remote_endpoint();
+            SERROR("connect to {}:{} error,{}",ep.address().to_string(),ep.port(),ec.message());
         }
 
     });

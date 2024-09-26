@@ -22,6 +22,7 @@ add_executable(enchat main.cpp
     chatserver.h chatserver.cpp
     socketsession.h socketsession.cpp
     chatclient.h chatclient.cpp
+    QJsonHelper.h
 )
 #add_subdirectory(curve25519)
 

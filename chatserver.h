@@ -17,6 +17,7 @@ using io_context_work = asio::executor_work_guard<asio::io_context::executor_typ
 class ChatServer
 {
 public:
+    using ChatSession = ChatSession<ChatServer>;
     ChatServer(uint16_t port, int size = std::thread::hardware_concurrency()):
         acceptor_io_ctx_(1),
         acceptor_(acceptor_io_ctx_, tcp::endpoint(make_address("::"),port)),
@@ -38,6 +39,10 @@ public:
         });
     }
     ~ChatServer();
+    void onConnected(const uint64_t id);
+    void onHandShakeFinished(const uint64_t id);
+    void onTextMsg(const uint64_t id, const QString& text);
+
 private:
     void doAccept();
 
@@ -57,6 +62,8 @@ private:
     std::vector<std::unique_ptr<io_context_work>> works_;
     std::vector<asio::io_context> client_io_ctxs_;
     std::vector<std::thread> threads_ioctxs_;
+
+    std::map<uint64_t,ChatSession::Ptr> sess_map_;
 };
 
 #endif // CHATSERVER_H

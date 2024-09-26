@@ -6,15 +6,40 @@
 #include <nlohmann/json.hpp>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QFile>
+#include <QVariantMap>
 #include <openssl/curve25519.h>
 extern "C" {
 #include <mbedtls/base64.h>
 }
 #include "XLog.h"
+#include "QJsonHelper.h"
 
 using namespace nlohmann;
+struct Peer {
+    typedef std::shared_ptr<Peer> Ptr;
+    QByteArray pub_key;
+    QString name;
 
+    void fromJson(const QJsonValue& j)
+    {
+        if (const QJsonValue& v = j["public_key"]; v.isString()) {
+            pub_key = QByteArray::fromBase64(v.toString().toLatin1());
+        }
+        if (const QJsonValue& v = j["name"]; v.isString()) {
+            name = v.toString();
+        }
+    }
+    QJsonValue toJson() const
+    {
+        QJsonObject o;
+        o["public_key"] = QString(pub_key.toBase64());
+        o["name"] = name;
+        return o;
+    }
+
+};
 class AppConfig
 {
 public:
@@ -33,17 +58,8 @@ public:
         }
 
         QJsonObject obj_root = doc.object();
-        if (!obj_root.contains("private_key") || !obj_root.contains("public_key")) {
-            SERROR("private_key|public_key not found.");
-            return;
-        }
+        QJsonHelper::get<AppConfig>(obj_root,*this);
 
-        auto pri = obj_root.value("private_key").toString();
-        pri_key = QByteArray::fromBase64(pri.toLatin1());
-        auto pub = obj_root.value("public_key").toString();
-        pub_key = QByteArray::fromBase64(pub.toLatin1());
-
-        server_port = obj_root.value("server_port").toInt(17799);
     }
     static void parse2(const std::string& file)
     {
@@ -53,7 +69,7 @@ public:
             SERROR("cfg error!");
             return;
         }
-        auto private_key = root.value("private_key","");
+        auto private_key = root.at("private_key").get<std::string>();//root.value("private_key","");
         std::string pub_key = root.value("public_key","");
         size_t outlen = 0;
 
@@ -86,9 +102,46 @@ public:
         std::cout << "\n";
         std::cout << out_base64 << "\n";
     }
+
+    //toJson fromJson
+
+    void fromJson(const QJsonValue& j)
+    {
+        if (const QJsonValue& v = j["private_key"]; v.isString()) {
+            pri_key = QByteArray::fromBase64(v.toString().toLatin1());
+        }
+        if (const QJsonValue& v = j["public_key"]; v.isString()) {
+            pub_key = QByteArray::fromBase64(v.toString().toLatin1());
+        }
+        if (const QJsonValue& v = j["server_port"]; v.isDouble()) {
+            server_port = v.toInt();
+        }
+        if (const QJsonValue& v = j["peers"]; v.isArray()) {
+            QJsonHelper::get<QList<Peer>>(v,peers_);
+        }
+    }
+    QJsonValue toJson()
+    {
+        QJsonObject o;
+        o["private_key"] = QString(pri_key.toBase64());
+        o["public_key"] = QString(pub_key.toBase64());
+        o["server_port"] = server_port;
+        o["peers"] = QJsonHelper::to<QList<Peer>>(peers_);
+        return o;
+    }
+
     QByteArray pub_key;
     QByteArray pri_key;
     uint16_t server_port;
+    QList<Peer> peers_;
     static uint8_t public_key[32];
     static uint8_t private_key[64];
+
+    QVariantMap config_;
 };
+
+namespace QJsonHelper {
+
+
+
+}

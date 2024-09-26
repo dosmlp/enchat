@@ -19,19 +19,36 @@ ChatServer::~ChatServer()
     }
 }
 
+void ChatServer::onConnected(const uint64_t id)
+{
+
+}
+
+void ChatServer::onHandShakeFinished(const uint64_t id)
+{
+
+}
+
+void ChatServer::onTextMsg(const uint64_t id, const QString &text)
+{
+
+}
+
 void ChatServer::doAccept()
 {
-    //auto client = std::make_shared<ChatSession>(tcp::socket(getIocontext()),tcp::endpoint());
     acceptor_.async_accept(getIocontext(),
                            [this](std::error_code ec,tcp::socket socket)
                            {
                                if (!ec) {
-                                   std::make_shared<ChatSession>(std::move(socket))->receiveHandshake();
+                                   auto sess = std::make_shared<ChatSession>(std::move(socket),this);
+                                   sess->receiveHandshake();
+                                   sess_map_.insert({sess->id(),sess});
+                                   onConnected(sess->id());
                                    doAccept();
                                } else {
                                    SERROR("async_accept error:{}",ec.message());
                                }
 
                            }
-                           );
+    );
 }
