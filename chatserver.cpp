@@ -1,5 +1,5 @@
 #include "chatserver.h"
-#include "XLog.h"
+#include "base/xlog.h"
 
 
 ChatServer::~ChatServer()

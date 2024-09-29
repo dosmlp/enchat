@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 20)
 #QTDIR=X:/Qt/6.7.2/msvc2019_64
 list(APPEND CMAKE_PREFIX_PATH $ENV{QTDIR})
 
-add_subdirectory(xlog)
+add_subdirectory(base)
 
 set(MbedTLS_Lite_SRC
     crypto/mbedtls_config.h
@@ -22,7 +22,6 @@ add_executable(enchat main.cpp
     chatserver.h chatserver.cpp
     socketsession.h socketsession.cpp
     chatclient.h chatclient.cpp
-    QJsonHelper.h
 )
 #add_subdirectory(curve25519)
 
@@ -40,6 +39,6 @@ target_link_libraries(enchat PUBLIC
     nlohmann_json::nlohmann_json
     CLI11::CLI11
     asio::asio
-    xlog)
-target_include_directories(enchat PRIVATE xlog)
+    base)
+# target_include_directories(enchat PRIV)
 #target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE /utf-8 /TP)

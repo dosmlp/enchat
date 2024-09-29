@@ -13,8 +13,8 @@
 extern "C" {
 #include <mbedtls/base64.h>
 }
-#include "XLog.h"
-#include "QJsonHelper.h"
+#include "base/xlog.h"
+#include "base/qjson_helper.h"
 
 using namespace nlohmann;
 struct Peer {

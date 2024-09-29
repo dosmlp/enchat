@@ -14,7 +14,7 @@ extern "C" {
 #include <mbedtls/chachapoly.h>
 }
 #include <openssl/curve25519.h>
-#include "XLog.h"
+#include "base/xlog.h"
 #include "app_config.h"
 
 using namespace asio::ip;

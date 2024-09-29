@@ -2,8 +2,8 @@
 #include "app_config.h"
 #include "chatclient.h"
 #include "chatserver.h"
-#include "xlog.h"
-#include "QJsonHelper.h"
+#include "base/xlog.h"
+#include "base/qjson_helper.h"
 
 int main(int argc, char** argv)
 {
