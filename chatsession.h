@@ -58,14 +58,12 @@ public:
         chacha_dctx_(new mbedtls_chacha20_context),
         chacha_ectx_(new mbedtls_chacha20_context),
         chacha20_key_(new uint8_t[32]),
-        peer_static_pubkey_(new uint8_t[32]),
         peer_name_(32,'\0'),
         ephemeral_pub_key_(new uint8_t[32]),
         ephemeral_pri_key_(new uint8_t[32]),
         client_(client)
     {
         id_ = genid();
-        std::memset(peer_static_pubkey_.get(),0,32);
         std::memset(chacha20_key_.get(),0,32);
         std::memset(ephemeral_pub_key_.get(),0,32);
         std::memset(ephemeral_pri_key_.get(),0,32);
@@ -77,6 +75,7 @@ public:
     }
     void close()
     {
+        client_->onClose(id_);
         socket_.close();
     }
     tcp::socket& getSocket()
@@ -152,6 +151,7 @@ public:
     void setId(uint64_t id) { id_ = id; }
     uint64_t id() const { return id_; }
     void setName(const QString& name) { name_ = name.toUtf8(); }
+    void setPeerPubkey(const QByteArray& peer_pubkey) { peer_static_pubkey_ = peer_pubkey; }
 private:
     void startRead()
     {
@@ -209,10 +209,21 @@ private:
             return;
         }
         //验证签名
-        if (ED25519_verify((const uint8_t*)hp.get(),sizeof(HelloPacket)-64,hp->sig,peer_static_pubkey_.get()) == 0) {
+        if (peer_static_pubkey_.isEmpty()) {
+            QByteArray pk((const char*)hp->static_key,32);
+            if (AppConfig::containsPeerPubkey(pk)) {
+                peer_static_pubkey_ = pk;
+            } else {
+                self->close();
+                return;
+            }
+        }
+        if (ED25519_verify((const uint8_t*)hp.get(),sizeof(HelloPacket)-64,hp->sig,(const uint8_t*)peer_static_pubkey_.data()) == 0) {
             SERROR("ED25519_verify Fail");
+            self->close();
             return;
         }
+
         std::memcpy(this->peer_name_.data(), hp->name, 32);
         //计算公共密钥
         //TODO 使用kdf生成公共密钥
@@ -276,7 +287,7 @@ private:
     std::unique_ptr<mbedtls_chacha20_context> chacha_ectx_;
 
     //对端永久公钥,用于身份认证
-    uint8UPtr peer_static_pubkey_;
+    QByteArray peer_static_pubkey_;
     //对端名称
     QByteArray peer_name_;
     //临时公钥

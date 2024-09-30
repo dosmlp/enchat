@@ -8,6 +8,7 @@
 #include <memory>
 #include <set>
 #include <utility>
+#include <mutex>
 #include "asio.hpp"
 #include "chatsession.h"
 
@@ -18,6 +19,7 @@ class ChatServer
 {
 public:
     using ChatSession = ChatSession<ChatServer>;
+    using lock_guard = std::lock_guard<std::mutex>;
     ChatServer(uint16_t port, int size = std::thread::hardware_concurrency()):
         acceptor_io_ctx_(1),
         acceptor_(acceptor_io_ctx_, tcp::endpoint(make_address("::"),port)),
@@ -39,7 +41,10 @@ public:
         });
     }
     ~ChatServer();
+
+
     void onConnected(const uint64_t id);
+    void onClose(const uint64_t id);
     void onHandShakeFinished(const uint64_t id);
     void onTextMsg(const uint64_t id, const QString& text);
 
@@ -64,6 +69,7 @@ private:
     std::vector<std::thread> threads_ioctxs_;
 
     std::map<uint64_t,ChatSession::Ptr> sess_map_;
+    std::mutex mutex_sessmap_;
 };
 
 #endif // CHATSERVER_H

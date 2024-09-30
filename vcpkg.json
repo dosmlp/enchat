@@ -3,6 +3,12 @@
   "name": "mypackage",
   "version-string": "0.0.1",
   "dependencies": [
-    "mbedtls","boringssl","spdlog","nlohmann-json","cli11","asio"
+    "mbedtls",
+    "boringssl",
+    "spdlog",
+    "nlohmann-json",
+    "cli11",
+    "asio",
+    "minhook"
   ]
 }

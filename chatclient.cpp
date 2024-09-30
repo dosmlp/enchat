@@ -15,9 +15,9 @@ ChatClient::~ChatClient()
     thread_run_.join();
 }
 
-void ChatClient::doConnect(const std::string &addr, uint16_t port)
+void ChatClient::doConnect(const std::string &addr, uint16_t port, const QByteArray &peer_pubkey)
 {
-    connect(tcp::endpoint(make_address(addr),port));
+    connect(tcp::endpoint(make_address(addr),port),peer_pubkey);
 }
 
 void ChatClient::close()
@@ -57,9 +57,14 @@ void ChatClient::onConnected(const uint64_t id)
 
 }
 
+void ChatClient::onClose(const uint64_t id)
+{
+    sess_map_.erase(id);
+}
+
 void ChatClient::onHandShakeFinished(const uint64_t id)
 {
-
+    SINFO("HandShakeFinished id:{}",id);
 }
 
 void ChatClient::onTextMsg(const uint64_t id, const QString &text)
@@ -67,11 +72,12 @@ void ChatClient::onTextMsg(const uint64_t id, const QString &text)
 
 }
 
-void ChatClient::connect(const tcp::endpoint& ep)
+void ChatClient::connect(const tcp::endpoint& ep, const QByteArray &peer_pubkey)
 {
     tcp::socket socket(io_ctx_);
     ChatSession<ChatClient>::Ptr session = std::make_shared<ChatSession<ChatClient>>(std::move(socket),this);
     session->setName(name_);
+    session->setPeerPubkey(peer_pubkey);
 
     sess_map_.insert({session->id(),session});
 

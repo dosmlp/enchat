@@ -43,22 +43,18 @@ struct Peer {
 class AppConfig
 {
 public:
-    void parse(const QString& file)
+    static bool containsPeerPubkey(const QByteArray& key)
     {
-        QFile file_cfg(file);
-        if (!file_cfg.open(QIODevice::ReadOnly)) {
-            SERROR("open cfg fail.");
-            return;
+        if (self_) {
+            return self_->_containsPeerPubkey(key);
         }
-        QJsonParseError parse_error;
-        QJsonDocument doc = QJsonDocument::fromJson(file_cfg.readAll(), &parse_error);
-        if (doc.isEmpty() || doc.isNull() || parse_error.error != QJsonParseError::NoError) {
-            SERROR("parse json error.");
-            return;
+        return false;
+    }
+    static void parse(const QString& file)
+    {
+        if (self_) {
+            self_->_parse(file);
         }
-
-        QJsonObject obj_root = doc.object();
-        QJsonHelper::get<AppConfig>(obj_root,*this);
 
     }
     static void parse2(const std::string& file)
@@ -130,14 +126,58 @@ public:
         return o;
     }
 
+    static void init()
+    {
+        self_ = new AppConfig;
+    }
+    static AppConfig* instance()
+    {
+        return self_;
+    }
+    static void release()
+    {
+        delete self_;
+        self_ = nullptr;
+    }
+    static uint8_t public_key[32];
+    static uint8_t private_key[64];
+private:
+    static AppConfig* self_;
     QByteArray pub_key;
     QByteArray pri_key;
     uint16_t server_port;
     QList<Peer> peers_;
-    static uint8_t public_key[32];
-    static uint8_t private_key[64];
+
 
     QVariantMap config_;
+
+    bool _containsPeerPubkey(const QByteArray& key)
+    {
+        for (const Peer& p:peers_) {
+            if (p.pub_key == key) {
+                return true;
+            }
+        }
+        return false;
+    }
+    void _parse(const QString& file)
+    {
+        QFile file_cfg(file);
+        if (!file_cfg.open(QIODevice::ReadOnly)) {
+            SERROR("open cfg fail.");
+            return;
+        }
+        QJsonParseError parse_error;
+        QJsonDocument doc = QJsonDocument::fromJson(file_cfg.readAll(), &parse_error);
+        if (doc.isEmpty() || doc.isNull() || parse_error.error != QJsonParseError::NoError) {
+            SERROR("parse cfg json error.");
+            return;
+        }
+
+        QJsonObject obj_root = doc.object();
+        QJsonHelper::get<AppConfig>(obj_root,*this);
+
+    }
 };
 
 namespace QJsonHelper {

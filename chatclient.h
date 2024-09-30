@@ -18,7 +18,7 @@ public:
     // using ChatSession = ChatSession<ChatClient>;
     ChatClient();
     ~ChatClient();
-    void doConnect(const std::string &addr, uint16_t port);
+    void doConnect(const std::string &addr, uint16_t port, const QByteArray& peer_pubkey);
     void close();
 
     void setName(const QString& name);
@@ -26,10 +26,11 @@ public:
 
     //回调
     void onConnected(const uint64_t id);
+    void onClose(const uint64_t id);
     void onHandShakeFinished(const uint64_t id);
     void onTextMsg(const uint64_t id, const QString& text);
 private:
-    void connect(const tcp::endpoint &ep);
+    void connect(const tcp::endpoint &ep, const QByteArray& peer_pubkey);
     void run();
     asio::io_context io_ctx_;
     io_context_guard io_guard_;

@@ -24,6 +24,13 @@ void ChatServer::onConnected(const uint64_t id)
 
 }
 
+void ChatServer::onClose(const uint64_t id)
+{
+    lock_guard lk(mutex_sessmap_);
+    sess_map_.erase(id);
+
+}
+
 void ChatServer::onHandShakeFinished(const uint64_t id)
 {
 
@@ -42,7 +49,9 @@ void ChatServer::doAccept()
                                if (!ec) {
                                    auto sess = std::make_shared<ChatSession>(std::move(socket),this);
                                    sess->receiveHandshake();
+                                   mutex_sessmap_.lock();
                                    sess_map_.insert({sess->id(),sess});
+                                   mutex_sessmap_.unlock();
                                    onConnected(sess->id());
                                    doAccept();
                                } else {
