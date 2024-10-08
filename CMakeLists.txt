@@ -17,7 +17,6 @@ set(MbedTLS_Lite_SRC
 
 add_executable(enchat main.cpp
     app_config.h app_config.cpp
-    mbedtls.hpp
     chatsession.h chatsession.cpp
     chatserver.h chatserver.cpp
     socketsession.h socketsession.cpp
@@ -27,7 +26,7 @@ add_executable(enchat main.cpp
 
 find_package(Qt6 CONFIG REQUIRED COMPONENTS Core)
 find_package(MbedTLS REQUIRED)
-find_package(OpenSSL REQUIRED)
+# find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(CLI11 CONFIG REQUIRED)
 find_package(asio CONFIG REQUIRED)
@@ -35,7 +34,7 @@ find_package(asio CONFIG REQUIRED)
 target_link_libraries(enchat PUBLIC
     Qt6::Core
     MbedTLS::mbedcrypto
-    OpenSSL::Crypto
+    # OpenSSL::Crypto
     nlohmann_json::nlohmann_json
     CLI11::CLI11
     asio::asio

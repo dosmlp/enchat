@@ -9,7 +9,7 @@
 #include <QJsonArray>
 #include <QFile>
 #include <QVariantMap>
-#include <openssl/curve25519.h>
+#include "base/boringssl/curve25519.h"
 extern "C" {
 #include <mbedtls/base64.h>
 }

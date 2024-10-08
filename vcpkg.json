@@ -4,7 +4,6 @@
   "version-string": "0.0.1",
   "dependencies": [
     "mbedtls",
-    "boringssl",
     "spdlog",
     "nlohmann-json",
     "cli11",

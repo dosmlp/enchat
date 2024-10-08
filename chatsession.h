@@ -13,7 +13,7 @@ extern "C" {
 #include <mbedtls/chacha20.h>
 #include <mbedtls/chachapoly.h>
 }
-#include <openssl/curve25519.h>
+#include "base/boringssl/curve25519.h"
 #include "base/xlog.h"
 #include "app_config.h"
 
