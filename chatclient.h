@@ -23,6 +23,17 @@ public:
 
     void setName(const QString& name);
     void sendTextMsg(uint64_t id, const QString& text);
+    void setEcKey(const QByteArray& pri, const QByteArray& pub)
+    {
+        static_prikey_ = pri;
+        static_pubkey_ = pub;
+    }
+    void getEcKey(QByteArray& pri, QByteArray& pub)
+    {
+        pri = static_prikey_;
+        pub = static_pubkey_;
+    }
+    bool containsPeerPubkey(const QByteArray&);
 
     //回调
     void onConnected(const uint64_t id);
@@ -37,6 +48,8 @@ private:
     std::map<uint64_t,ChatSession<ChatClient>::Ptr> sess_map_;
     std::thread thread_run_;
     QString name_;
+    QByteArray static_prikey_;
+    QByteArray static_pubkey_;
 };
 
 #endif // CHATCLIENT_H

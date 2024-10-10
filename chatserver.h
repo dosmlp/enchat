@@ -11,6 +11,7 @@
 #include <mutex>
 #include "asio.hpp"
 #include "chatsession.h"
+#include "Peer.h"
 
 using namespace asio::ip;
 using io_context_work = asio::executor_work_guard<asio::io_context::executor_type>;
@@ -41,6 +42,23 @@ public:
         });
     }
     ~ChatServer();
+    void setEcKey(const QByteArray& pri, const QByteArray& pub)
+    {
+        static_prikey_ = pri;
+        static_pubkey_ = pub;
+    }
+    void updatePeerList(const QSet<Peer>& peers);
+    void getEcKey(QByteArray& pri, QByteArray& pub)
+    {
+        pri = static_prikey_;
+        pub = static_pubkey_;
+    }
+    bool containsPeerPubkey(const QByteArray& peer_pubkey)
+    {
+        lock_guard lk(mutex_sessmap_);
+        Peer p = {QString(),peer_pubkey};
+        return peer_list_.contains(p);
+    }
 
 
     void onConnected(const uint64_t id);
@@ -57,7 +75,8 @@ private:
         if (next_io_ == client_io_ctxs_.size()) next_io_ = 0;
         return io;
     }
-
+    QByteArray static_prikey_;
+    QByteArray static_pubkey_;
 
     asio::io_context acceptor_io_ctx_;
     tcp::acceptor acceptor_;
@@ -69,6 +88,7 @@ private:
     std::vector<std::thread> threads_ioctxs_;
 
     std::map<uint64_t,ChatSession::Ptr> sess_map_;
+    QSet<Peer> peer_list_;
     std::mutex mutex_sessmap_;
 };
 

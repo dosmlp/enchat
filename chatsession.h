@@ -13,9 +13,8 @@ extern "C" {
 #include <mbedtls/chacha20.h>
 #include <mbedtls/chachapoly.h>
 }
-#include "base/boringssl/curve25519.h"
-#include "base/xlog.h"
-#include "app_config.h"
+#include "boringssl/curve25519.h"
+#include "xlog.h"
 
 using namespace asio::ip;
 using namespace std::placeholders;
@@ -68,6 +67,7 @@ public:
         std::memset(ephemeral_pub_key_.get(),0,32);
         std::memset(ephemeral_pri_key_.get(),0,32);
         X25519_keypair(ephemeral_pub_key_.get(),ephemeral_pri_key_.get());
+        client->getEcKey(static_prikey_, static_pubkey_);
     }
     ~ChatSession()
     {
@@ -91,10 +91,10 @@ public:
             std::memcpy(hp->name,name_.data(),name_.size());
         }
 
-        std::memcpy(hp->static_key,AppConfig::public_key,32);
+        std::memcpy(hp->static_key,static_pubkey_.data(),32);
         std::memcpy(hp->ephemeral_key,ephemeral_pub_key_.get(),32);
         hp->timestamp = 1;
-        ED25519_sign(hp->sig,(const uint8_t*)hp.get(),sizeof(HelloPacket)-64,AppConfig::private_key);
+        ED25519_sign(hp->sig,(const uint8_t*)hp.get(),sizeof(HelloPacket)-64,(const uint8_t*)static_prikey_.data());
 
         auto self = this->shared_from_this();
         SDEBUG("send handshake type:{}",hp->type);
@@ -211,7 +211,7 @@ private:
         //验证签名
         if (peer_static_pubkey_.isEmpty()) {
             QByteArray pk((const char*)hp->static_key,32);
-            if (AppConfig::containsPeerPubkey(pk)) {
+            if (client_->containsPeerPubkey(pk)) {
                 peer_static_pubkey_ = pk;
             } else {
                 self->close();
@@ -280,6 +280,8 @@ private:
         return gid;
     }
     QByteArray name_;
+    QByteArray static_prikey_;
+    QByteArray static_pubkey_;
 
     //chacha20密钥
     uint8UPtr chacha20_key_;

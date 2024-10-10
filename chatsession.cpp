@@ -1,5 +1,4 @@
 #include "chatsession.h"
-#include "app_config.h"
 #include <functional>
 #include "chatclient.h"
 

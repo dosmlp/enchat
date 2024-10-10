@@ -1,5 +1,5 @@
 #include "chatserver.h"
-#include "base/xlog.h"
+#include "xlog.h"
 
 
 ChatServer::~ChatServer()
@@ -17,6 +17,12 @@ ChatServer::~ChatServer()
     for (auto& thread : threads_ioctxs_) {
         thread.join();
     }
+}
+
+void ChatServer::updatePeerList(const QSet<Peer> &peers)
+{
+    lock_guard lk(mutex_sessmap_);
+    peer_list_ = peers;
 }
 
 void ChatServer::onConnected(const uint64_t id)

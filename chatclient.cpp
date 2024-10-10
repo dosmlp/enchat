@@ -1,5 +1,5 @@
 #include "chatclient.h"
-#include "base/xlog.h"
+#include "xlog.h"
 
 ChatClient::ChatClient():
     io_ctx_(1),
@@ -50,6 +50,12 @@ void ChatClient::sendTextMsg(uint64_t id, const QString &text)
     *((uint16_t*)(msg.get()+2)) = 1;
 
     session->writeMsg(std::move(msg),static_cast<uint16_t>(u8text.size()));
+}
+
+bool ChatClient::containsPeerPubkey(const QByteArray &)
+{
+    SERROR("shouldn't run here.");
+    return false;
 }
 
 void ChatClient::onConnected(const uint64_t id)
