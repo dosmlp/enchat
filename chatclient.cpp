@@ -22,7 +22,7 @@ void ChatClient::doConnect(const std::string &addr, uint16_t port, const QByteAr
 
 void ChatClient::close()
 {
-    for (auto ptr : sess_map_) {
+    for (const auto &ptr : sess_map_) {
         ptr.second->close();
     }
     sess_map_.clear();
