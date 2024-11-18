@@ -8,6 +8,8 @@ struct Peer {
     typedef std::shared_ptr<Peer> Ptr;
     QString name;
     QByteArray pub_key;
+    QString address;
+    uint16_t port;
 
     void fromJson(const QJsonValue& j)
     {
@@ -17,12 +19,20 @@ struct Peer {
         if (const QJsonValue& v = j["name"]; v.isString()) {
             name = v.toString();
         }
+        if (const QJsonValue& v = j["address"]; v.isString()) {
+            address = v.toString();
+        }
+        if (const QJsonValue& v = j["port"]; v.isDouble()) {
+            port = v.toInt();
+        }
     }
     QJsonValue toJson() const
     {
         QJsonObject o;
         o["public_key"] = QString(pub_key.toBase64());
         o["name"] = name;
+        o["address"] = address;
+        o["port"] = port;
         return o;
     }
 };

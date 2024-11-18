@@ -1,9 +1,10 @@
 #include "chatclient.h"
 #include "xlog.h"
 
-ChatClient::ChatClient():
+ChatClient::ChatClient(const QString &name):
     io_ctx_(1),
-    io_guard_(asio::make_work_guard(io_ctx_))
+    io_guard_(asio::make_work_guard(io_ctx_)),
+    name_(name)
 {
     thread_run_ = std::thread(std::bind(&ChatClient::run,this));
 }
@@ -17,7 +18,8 @@ ChatClient::~ChatClient()
 
 void ChatClient::doConnect(const std::string &addr, uint16_t port, const QByteArray &peer_pubkey)
 {
-    connect(tcp::endpoint(make_address(addr),port),peer_pubkey);
+    tcp::resolver resolver(io_ctx_);
+    connect(resolver.resolve(addr,std::to_string(port)),peer_pubkey);
 }
 
 void ChatClient::close()
@@ -78,7 +80,7 @@ void ChatClient::onTextMsg(const uint64_t id, const QString &text)
 
 }
 
-void ChatClient::connect(const tcp::endpoint& ep, const QByteArray &peer_pubkey)
+void ChatClient::connect(const tcp::resolver::results_type& endpoints, const QByteArray &peer_pubkey)
 {
     tcp::socket socket(io_ctx_);
     ChatSession<ChatClient>::Ptr session = std::make_shared<ChatSession<ChatClient>>(std::move(socket),this);
@@ -87,16 +89,20 @@ void ChatClient::connect(const tcp::endpoint& ep, const QByteArray &peer_pubkey)
 
     sess_map_.insert({session->id(),session});
 
-    session->getSocket().async_connect(ep,[this,session](std::error_code ec) {
-        if (!ec) {
-            session->sendHandshake(1);
-            onConnected(session->id());
-        } else {
-            auto ep = session->getSocket().remote_endpoint();
-            SERROR("connect to {}:{} error,{}",ep.address().to_string(),ep.port(),ec.message());
-        }
+    asio::async_connect(session->getSocket(),endpoints,
+                        [this,session](std::error_code ec, tcp::endpoint ep){
+                            if (!ec) {
+                                session->sendHandshake(1);
+                                onConnected(session->id());
+                            } else {
+                                SERROR("connect to {}:{} error,{}",ep.address().to_string(),ep.port(),ec.message());
+                            }
+                        });
 
-    });
+    // session->getSocket().async_connect(ep,[this,session](std::error_code ec) {
+
+
+    // });
 }
 
 void ChatClient::run()
