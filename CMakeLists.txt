@@ -10,7 +10,8 @@ find_package(MbedTLS REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 # find_package(CLI11 CONFIG REQUIRED)
 find_package(asio CONFIG REQUIRED)
-qt_standard_project_setup()
+# qt_standard_project_setup()
+set(CMAKE_AUTOMOC TRUE)
 
 set(MbedTLS_Lite_SRC
     crypto/mbedtls_config.h
