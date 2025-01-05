@@ -1,7 +1,8 @@
 #include "chatclient.h"
 #include "xlog.h"
 
-ChatClient::ChatClient(const QString &name):
+ChatClient::ChatClient(QObject *parent, const QString &name):
+    QObject(parent),
     io_ctx_(1),
     io_guard_(asio::make_work_guard(io_ctx_)),
     name_(name)
@@ -16,7 +17,7 @@ ChatClient::~ChatClient()
     thread_run_.join();
 }
 
-void ChatClient::doConnect(const std::string &addr, uint16_t port, const QByteArray &peer_pubkey)
+void ChatClient::doConnect(const std::string &addr, uint16_t port, const QString &peer_pubkey)
 {
     tcp::resolver resolver(io_ctx_);
     connect(resolver.resolve(addr,std::to_string(port)),peer_pubkey);
@@ -35,11 +36,11 @@ void ChatClient::setName(const QString &name)
     name_ = name;
 }
 
-void ChatClient::sendTextMsg(uint64_t id, const QString &text)
+void ChatClient::sendTextMsg(const QString &id, const QString &text)
 {
     auto it = sess_map_.find(id);
     if (it == sess_map_.end()) {
-        SERROR("find chatsession fail,id:{}",id);
+        SERROR("find chatsession fail,id:{}",id.toStdString());
         return;
     }
     ChatSession<ChatClient>::Ptr session = (*it).second;
@@ -60,34 +61,36 @@ bool ChatClient::containsPeerPubkey(const QByteArray &)
     return false;
 }
 
-void ChatClient::onConnected(const uint64_t id)
+void ChatClient::onConnected(const QString& id)
 {
-
+    emit sigConnected(id);
 }
 
-void ChatClient::onClose(const uint64_t id)
+void ChatClient::onClose(const QString& id)
 {
     sess_map_.erase(id);
+    emit sigClose(id);
 }
 
-void ChatClient::onHandShakeFinished(const uint64_t id)
+void ChatClient::onHandShakeFinished(const QString& id)
 {
     SINFO("HandShakeFinished id:{}",id);
+    emit sigHandshakeFinished(id);
 }
 
-void ChatClient::onTextMsg(const uint64_t id, const QString &text)
+void ChatClient::onTextMsg(const QString& id, const QString &text)
 {
-
+    emit sigTextMsg(id,text);
 }
 
-void ChatClient::connect(const tcp::resolver::results_type& endpoints, const QByteArray &peer_pubkey)
+void ChatClient::connect(const tcp::resolver::results_type& endpoints, const QString &peer_pubkey)
 {
     tcp::socket socket(io_ctx_);
     ChatSession<ChatClient>::Ptr session = std::make_shared<ChatSession<ChatClient>>(std::move(socket),this);
     session->setName(name_);
-    session->setPeerPubkey(peer_pubkey);
+    session->setPeerPubkey(QByteArray::fromBase64(peer_pubkey.toLatin1()));
 
-    sess_map_.insert({session->id(),session});
+    sess_map_.insert({peer_pubkey,session});
 
     asio::async_connect(session->getSocket(),endpoints,
                         [this,session](std::error_code ec, tcp::endpoint ep){

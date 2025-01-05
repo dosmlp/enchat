@@ -25,26 +25,26 @@ void ChatServer::updatePeerList(const QSet<Peer> &peers)
     peer_list_ = peers;
 }
 
-void ChatServer::onConnected(const uint64_t id)
+void ChatServer::onConnected(const QString& id)
 {
-
+    emit sigConnected(id);
 }
 
-void ChatServer::onClose(const uint64_t id)
+void ChatServer::onClose(const QString& id)
 {
     lock_guard lk(mutex_sessmap_);
     sess_map_.erase(id);
-
+    emit sigClose(id);
 }
 
-void ChatServer::onHandShakeFinished(const uint64_t id)
+void ChatServer::onHandShakeFinished(const QString& id)
 {
-
+    emit sigHandshakeFinished(id);
 }
 
-void ChatServer::onTextMsg(const uint64_t id, const QString &text)
+void ChatServer::onTextMsg(const QString& id, const QString &text)
 {
-
+    emit sigTextMsg(id,text);
 }
 
 void ChatServer::doAccept()
@@ -61,7 +61,10 @@ void ChatServer::doAccept()
                                    onConnected(sess->id());
                                    doAccept();
                                } else {
-                                   SERROR("async_accept error:{}",ec.message());
+                                   if (ec.value() != 995) {
+                                       SERROR("async_accept error:{}",ec.message());
+                                   }
+
                                }
 
                            }

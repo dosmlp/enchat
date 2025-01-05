@@ -1,6 +1,7 @@
 #ifndef CHATSERVER_H
 #define CHATSERVER_H
 
+#include <QObject>
 #include <cstdlib>
 #include <deque>
 #include <iostream>
@@ -16,12 +17,14 @@
 using namespace asio::ip;
 using io_context_work = asio::executor_work_guard<asio::io_context::executor_type>;
 
-class ChatServer
+class ChatServer : public QObject
 {
+    Q_OBJECT
 public:
     using ChatSession = ChatSession<ChatServer>;
     using lock_guard = std::lock_guard<std::mutex>;
-    ChatServer(uint16_t port, int size = std::thread::hardware_concurrency()):
+    ChatServer(uint16_t port, QObject* parent, int size = std::thread::hardware_concurrency()):
+        QObject(parent),
         acceptor_io_ctx_(1),
         acceptor_(acceptor_io_ctx_, tcp::endpoint(make_address("::"),port)),
         works_(size),
@@ -34,13 +37,9 @@ public:
             }));
         }
         doAccept();
+        run();
     }
-    void run()
-    {
-        thread_acceptor_ = std::thread([this](){
-            acceptor_io_ctx_.run();
-        });
-    }
+
     ~ChatServer();
     void setEcKey(const QByteArray& pri, const QByteArray& pub)
     {
@@ -61,13 +60,23 @@ public:
     }
 
 
-    void onConnected(const uint64_t id);
-    void onClose(const uint64_t id);
-    void onHandShakeFinished(const uint64_t id);
-    void onTextMsg(const uint64_t id, const QString& text);
-
+    void onConnected(const QString& id);
+    void onClose(const QString& id);
+    void onHandShakeFinished(const QString& id);
+    void onTextMsg(const QString& id, const QString& text);
+signals:
+    void sigConnected(const QString& id);
+    void sigClose(const QString& id);
+    void sigHandshakeFinished(const QString& id);
+    void sigTextMsg(const QString& id, const QString& text);
 private:
     void doAccept();
+    void run()
+    {
+        thread_acceptor_ = std::thread([this](){
+            acceptor_io_ctx_.run();
+        });
+    }
 
     asio::io_context& getIocontext()
     {
@@ -87,7 +96,7 @@ private:
     std::vector<asio::io_context> client_io_ctxs_;
     std::vector<std::thread> threads_ioctxs_;
 
-    std::map<uint64_t,ChatSession::Ptr> sess_map_;
+    std::map<QString,ChatSession::Ptr> sess_map_;
     QSet<Peer> peer_list_;
     std::mutex mutex_sessmap_;
 };

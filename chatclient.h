@@ -3,6 +3,7 @@
 
 #include <string>
 #include <thread>
+#include <QObject>
 #include <QString>
 #include <map>
 #include "asio.hpp"
@@ -12,17 +13,18 @@ using namespace asio::ip;
 using io_context_guard = asio::executor_work_guard<asio::io_context::executor_type>;
 
 
-class ChatClient
+class ChatClient : public QObject
 {
+    Q_OBJECT
 public:
     // using ChatSession = ChatSession<ChatClient>;
-    ChatClient(const QString& name);
+    ChatClient(QObject* parent, const QString& name);
     ~ChatClient();
-    void doConnect(const std::string &addr, uint16_t port, const QByteArray& peer_pubkey);
+    void doConnect(const std::string &addr, uint16_t port, const QString &peer_pubkey);
     void close();
 
     void setName(const QString& name);
-    void sendTextMsg(uint64_t id, const QString& text);
+    void sendTextMsg(const QString& id, const QString& text);
     void setEcKey(const QByteArray& pri, const QByteArray& pub)
     {
         static_prikey_ = pri;
@@ -36,16 +38,21 @@ public:
     bool containsPeerPubkey(const QByteArray&);
 
     //回调
-    void onConnected(const uint64_t id);
-    void onClose(const uint64_t id);
-    void onHandShakeFinished(const uint64_t id);
-    void onTextMsg(const uint64_t id, const QString& text);
+    void onConnected(const QString& id);
+    void onClose(const QString& id);
+    void onHandShakeFinished(const QString& id);
+    void onTextMsg(const QString& id, const QString& text);
+signals:
+    void sigConnected(const QString& id);
+    void sigClose(const QString& id);
+    void sigHandshakeFinished(const QString& id);
+    void sigTextMsg(const QString& id, const QString& text);
 private:
-    void connect(const tcp::resolver::results_type& endpoints, const QByteArray& peer_pubkey);
+    void connect(const tcp::resolver::results_type& endpoints, const QString& peer_pubkey);
     void run();
     asio::io_context io_ctx_;
     io_context_guard io_guard_;
-    std::map<uint64_t,ChatSession<ChatClient>::Ptr> sess_map_;
+    std::map<QString,ChatSession<ChatClient>::Ptr> sess_map_;
     std::thread thread_run_;
     QString name_;
     QByteArray static_prikey_;

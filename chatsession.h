@@ -62,7 +62,6 @@ public:
         ephemeral_pri_key_(new uint8_t[32]),
         client_(client)
     {
-        id_ = genid();
         std::memset(chacha20_key_.get(),0,32);
         std::memset(ephemeral_pub_key_.get(),0,32);
         std::memset(ephemeral_pri_key_.get(),0,32);
@@ -148,10 +147,13 @@ public:
                           }
         );
     }
-    void setId(uint64_t id) { id_ = id; }
-    uint64_t id() const { return id_; }
+    QString id() const { return id_; }
     void setName(const QString& name) { name_ = name.toUtf8(); }
-    void setPeerPubkey(const QByteArray& peer_pubkey) { peer_static_pubkey_ = peer_pubkey; }
+    void setPeerPubkey(const QString& peer_pubkey)
+    {
+        id_ = peer_pubkey;
+        peer_static_pubkey_ = QByteArray::fromBase64(peer_pubkey.toLatin1());
+    }
 private:
     void startRead()
     {
@@ -259,7 +261,7 @@ private:
     }
     tcp::socket socket_;
 
-    uint64_t id_;
+    QString id_;
 
     static uint64_t genid()
     {
