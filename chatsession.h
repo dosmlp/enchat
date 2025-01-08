@@ -14,6 +14,7 @@ extern "C" {
 #include <mbedtls/chachapoly.h>
 }
 #include "boringssl/curve25519.h"
+#include <ed25519.h>
 #include "xlog.h"
 
 using namespace asio::ip;
@@ -93,7 +94,10 @@ public:
         std::memcpy(hp->static_key,static_pubkey_.data(),32);
         std::memcpy(hp->ephemeral_key,ephemeral_pub_key_.get(),32);
         hp->timestamp = 1;
-        ED25519_sign(hp->sig,(const uint8_t*)hp.get(),sizeof(HelloPacket)-64,(const uint8_t*)static_prikey_.data());
+        // ED25519_sign(hp->sig,(const uint8_t*)hp.get(),sizeof(HelloPacket)-sizeof(hp->sig),(const uint8_t*)static_prikey_.data());
+        ed25519_sign(hp->sig,
+                     (const uint8_t*)hp.get(),sizeof(HelloPacket)-sizeof(hp->sig),
+                     (const uint8_t*)static_pubkey_.data(),(const uint8_t*)static_prikey_.data());
 
         auto self = this->shared_from_this();
         SDEBUG("send handshake type:{}",hp->type);
@@ -132,6 +136,7 @@ public:
         mbedtls_chacha20_update(chacha_ectx_.get(),size,msg.get()+4,msg.get()+4);
 
         std::shared_ptr<uint8_t> data(msg.release());
+        // size += 4;
         std::memcpy(data.get(),&size,2);
 
         auto self = this->shared_from_this();
@@ -190,7 +195,7 @@ private:
             return;
         }
         uint16_t msgsize = *((uint16_t*)msg.get());
-        uint16_t protocol = *((uint16_t*)msg.get()+2);
+        uint16_t protocol = *((uint16_t*)(msg.get()+2));
 
         if (protocol == 1) {
             mbedtls_chacha20_update(chacha_dctx_.get(),
@@ -215,12 +220,13 @@ private:
             QByteArray pk((const char*)hp->static_key,32);
             if (client_->containsPeerPubkey(pk)) {
                 peer_static_pubkey_ = pk;
+                id_ = peer_static_pubkey_.toBase64();
             } else {
                 self->close();
                 return;
             }
         }
-        if (ED25519_verify((const uint8_t*)hp.get(),sizeof(HelloPacket)-64,hp->sig,(const uint8_t*)peer_static_pubkey_.data()) == 0) {
+        if (ed25519_verify(hp->sig,(const uint8_t*)hp.get(),sizeof(HelloPacket)-sizeof(hp->sig),(const uint8_t*)peer_static_pubkey_.data()) == 0) {
             SERROR("ED25519_verify Fail");
             self->close();
             return;
@@ -231,7 +237,7 @@ private:
         //TODO 使用kdf生成公共密钥
         if (X25519(this->chacha20_key_.get(),this->ephemeral_pri_key_.get(),hp->ephemeral_key)) {
             this->initChaCha20();
-            SINFO("handshake success.");
+            SINFO("gen shared success.");
         } else {
             SERROR("gen shared key fail.");
             return;
@@ -244,7 +250,8 @@ private:
         }
         //握手完成开始接收消息
         SDEBUG("handshake done,start read msg.");
-        client_->onHandShakeFinished(id_);
+
+        client_->onHandShakeFinished(id_,this->shared_from_this());
         self->startRead();
 
     }

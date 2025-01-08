@@ -24,11 +24,11 @@ public:
     void close();
 
     void setName(const QString& name);
-    void sendTextMsg(const QString& id, const QString& text);
-    void setEcKey(const QByteArray& pri, const QByteArray& pub)
+    bool sendTextMsg(const QString& id, const QString& text);
+    void setEcKey(const QString& pri, const QString& pub)
     {
-        static_prikey_ = pri;
-        static_pubkey_ = pub;
+        static_prikey_ = QByteArray::fromBase64(pri.toLatin1());
+        static_pubkey_ = QByteArray::fromBase64(pub.toLatin1());
     }
     void getEcKey(QByteArray& pri, QByteArray& pub)
     {
@@ -40,7 +40,7 @@ public:
     //回调
     void onConnected(const QString& id);
     void onClose(const QString& id);
-    void onHandShakeFinished(const QString& id);
+    void onHandShakeFinished(const QString& id, ChatSession<ChatClient>::Ptr sess);
     void onTextMsg(const QString& id, const QString& text);
 signals:
     void sigConnected(const QString& id);

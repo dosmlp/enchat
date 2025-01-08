@@ -36,12 +36,12 @@ void ChatClient::setName(const QString &name)
     name_ = name;
 }
 
-void ChatClient::sendTextMsg(const QString &id, const QString &text)
+bool ChatClient::sendTextMsg(const QString &id, const QString &text)
 {
     auto it = sess_map_.find(id);
     if (it == sess_map_.end()) {
         SERROR("find chatsession fail,id:{}",id.toStdString());
-        return;
+        return false;
     }
     ChatSession<ChatClient>::Ptr session = (*it).second;
 
@@ -50,9 +50,10 @@ void ChatClient::sendTextMsg(const QString &id, const QString &text)
     std::unique_ptr<uint8_t> msg = std::unique_ptr<uint8_t>(new uint8_t[4096]);
 
     std::memcpy(msg.get()+4,u8text.data(),u8text.size());
-    *((uint16_t*)(msg.get()+2)) = 1;
+    *((uint16_t*)(msg.get()+2)) = 1;//协议1
 
     session->writeMsg(std::move(msg),static_cast<uint16_t>(u8text.size()));
+    return true;
 }
 
 bool ChatClient::containsPeerPubkey(const QByteArray &)
@@ -72,7 +73,7 @@ void ChatClient::onClose(const QString& id)
     emit sigClose(id);
 }
 
-void ChatClient::onHandShakeFinished(const QString& id)
+void ChatClient::onHandShakeFinished(const QString& id, ChatSession<ChatClient>::Ptr sess)
 {
     SINFO("HandShakeFinished id:{}",id);
     emit sigHandshakeFinished(id);
@@ -88,7 +89,7 @@ void ChatClient::connect(const tcp::resolver::results_type& endpoints, const QSt
     tcp::socket socket(io_ctx_);
     ChatSession<ChatClient>::Ptr session = std::make_shared<ChatSession<ChatClient>>(std::move(socket),this);
     session->setName(name_);
-    session->setPeerPubkey(QByteArray::fromBase64(peer_pubkey.toLatin1()));
+    session->setPeerPubkey(peer_pubkey);
 
     sess_map_.insert({peer_pubkey,session});
 

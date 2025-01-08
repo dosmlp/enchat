@@ -41,12 +41,13 @@ public:
     }
 
     ~ChatServer();
-    void setEcKey(const QByteArray& pri, const QByteArray& pub)
+    bool sendTextMsg(const QString& id,const QString& text);
+    void setEcKey(const QString& pri, const QString& pub)
     {
-        static_prikey_ = pri;
-        static_pubkey_ = pub;
+        static_prikey_ = QByteArray::fromBase64(pri.toLatin1());
+        static_pubkey_ = QByteArray::fromBase64(pub.toLatin1());
     }
-    void updatePeerList(const QSet<Peer>& peers);
+    void updatePeerList(QList<Peer::Ptr> &peers);
     void getEcKey(QByteArray& pri, QByteArray& pub)
     {
         pri = static_prikey_;
@@ -55,14 +56,18 @@ public:
     bool containsPeerPubkey(const QByteArray& peer_pubkey)
     {
         lock_guard lk(mutex_sessmap_);
-        Peer p = {QString(),peer_pubkey};
-        return peer_list_.contains(p);
+        QString pub_key = peer_pubkey.toBase64();
+        for (auto& p:peer_list_)
+        {
+            if (p->pub_key == pub_key) return true;
+        }
+        return false;
     }
 
 
     void onConnected(const QString& id);
     void onClose(const QString& id);
-    void onHandShakeFinished(const QString& id);
+    void onHandShakeFinished(const QString& id,ChatSession::Ptr sess);
     void onTextMsg(const QString& id, const QString& text);
 signals:
     void sigConnected(const QString& id);
@@ -97,7 +102,7 @@ private:
     std::vector<std::thread> threads_ioctxs_;
 
     std::map<QString,ChatSession::Ptr> sess_map_;
-    QSet<Peer> peer_list_;
+    QList<Peer::Ptr> peer_list_;
     std::mutex mutex_sessmap_;
 };
 

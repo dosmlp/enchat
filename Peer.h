@@ -45,6 +45,11 @@ inline bool operator==(const Peer &e1, const Peer &e2)
     return e1.pub_key == e2.pub_key;
 }
 
+inline bool operator==(const Peer::Ptr &e1, const Peer::Ptr &e2)
+{
+    return e1->pub_key == e2->pub_key;
+}
+
 inline size_t qHash(const Peer &key, size_t seed)
 {
     return qHash(key.pub_key, seed);
